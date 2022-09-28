@@ -18,16 +18,15 @@ package com.bmuschko.gradle.docker.tasks
 import com.bmuschko.gradle.docker.DockerExtension
 import com.bmuschko.gradle.docker.DockerRemoteApiPlugin
 import com.bmuschko.gradle.docker.internal.RegistryAuthLocator
+import com.bmuschko.gradle.docker.services.DockerClientService
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.core.DefaultDockerClientConfig
-import com.github.dockerjava.core.DockerClientConfig
-import com.github.dockerjava.core.DockerClientImpl
-import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
 import groovy.transform.CompileStatic
 import groovy.transform.Memoized
 import org.gradle.api.Action
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.plugins.ExtensionContainer
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
@@ -61,6 +60,9 @@ abstract class AbstractDockerRemoteApiTask extends DefaultTask {
     @Input
     @Optional
     final Property<String> apiVersion = project.objects.property(String)
+
+    @Internal
+    final Property<DockerClientService> dockerClientService = project.objects.property(DockerClientService)
 
     private Action<? super Throwable> errorHandler
     private Action nextHandler
@@ -143,45 +145,7 @@ abstract class AbstractDockerRemoteApiTask extends DefaultTask {
     @Memoized
     DockerClient getDockerClient() {
         DockerClientConfiguration dockerClientConfiguration = createDockerClientConfig()
-        DockerExtension dockerExtension = (DockerExtension) project.extensions.getByName(DockerRemoteApiPlugin.EXTENSION_NAME)
-        String dockerUrl = getDockerHostUrl(dockerClientConfiguration, dockerExtension)
-        File dockerCertPath = dockerClientConfiguration.certPath?.asFile ?: dockerExtension.certPath.getOrNull()?.asFile
-        String apiVersion = dockerClientConfiguration.apiVersion ?: dockerExtension.apiVersion.getOrNull()
-
-        // Create configuration
-        DefaultDockerClientConfig.Builder dockerClientConfigBuilder = DefaultDockerClientConfig.createDefaultConfigBuilder()
-        dockerClientConfigBuilder.withDockerHost(dockerUrl)
-
-        if (dockerCertPath) {
-            dockerClientConfigBuilder.withDockerTlsVerify(true)
-            dockerClientConfigBuilder.withDockerCertPath(dockerCertPath.canonicalPath)
-        } else {
-            dockerClientConfigBuilder.withDockerTlsVerify(false)
-        }
-
-        if (apiVersion) {
-            dockerClientConfigBuilder.withApiVersion(apiVersion)
-        }
-
-        DefaultDockerClientConfig dockerClientConfig = dockerClientConfigBuilder.build()
-
-        DockerClient dockerClient = createDefaultDockerClient(dockerClientConfig)
-        // register buildFinished-hook to close docker client.
-        project.gradle.buildFinished {
-            dockerClient.close()
-        }
-        dockerClient
-    }
-
-    private DockerClient createDefaultDockerClient(DockerClientConfig config) {
-        ApacheDockerHttpClient dockerClient = new ApacheDockerHttpClient.Builder()
-                .dockerHost(config.getDockerHost())
-                .sslConfig(config.getSSLConfig())
-                .build()
-        DockerClientImpl.getInstance(
-            config,
-            dockerClient
-        )
+        dockerClientService.get().getDockerClient(dockerClientConfiguration)
     }
 
     /**
@@ -203,18 +167,6 @@ abstract class AbstractDockerRemoteApiTask extends DefaultTask {
         dockerClientConfig.certPath = certPath.getOrNull()
         dockerClientConfig.apiVersion = apiVersion.getOrNull()
         dockerClientConfig
-    }
-
-    /**
-     * Checks if Docker host URL starts with http(s) and if so, converts it to tcp
-     * which is accepted by docker-java library.
-     *
-     * @param dockerClientConfiguration docker client configuration
-     * @return Docker host URL as string
-     */
-    private String getDockerHostUrl(DockerClientConfiguration dockerClientConfiguration, DockerExtension dockerExtension) {
-        String url = (dockerClientConfiguration.url ?: dockerExtension.url.getOrNull()).toLowerCase()
-        url.startsWith('http') ? 'tcp' + url.substring(url.indexOf(':')) : url
     }
 
     abstract void runRemoteCommand()
