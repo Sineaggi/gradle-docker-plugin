@@ -15,18 +15,13 @@
  */
 package com.bmuschko.gradle.docker.tasks
 
-import com.bmuschko.gradle.docker.DockerExtension
-import com.bmuschko.gradle.docker.DockerRemoteApiPlugin
 import com.bmuschko.gradle.docker.internal.RegistryAuthLocator
 import com.bmuschko.gradle.docker.services.DockerClientService
 import com.github.dockerjava.api.DockerClient
-import com.github.dockerjava.core.DefaultDockerClientConfig
 import groovy.transform.CompileStatic
-import groovy.transform.Memoized
 import org.gradle.api.Action
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.plugins.ExtensionContainer
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
@@ -142,7 +137,6 @@ abstract class AbstractDockerRemoteApiTask extends DefaultTask {
      * @return The Docker client
      */
     @Internal
-    @Memoized
     DockerClient getDockerClient() {
         DockerClientConfiguration dockerClientConfiguration = createDockerClientConfig()
         dockerClientService.get().getDockerClient(dockerClientConfiguration)
@@ -156,10 +150,11 @@ abstract class AbstractDockerRemoteApiTask extends DefaultTask {
      * @return The registry authentication locator
      */
     @Internal
-    @Memoized
     protected RegistryAuthLocator getRegistryAuthLocator() {
-        new RegistryAuthLocator()
+        registryAuthLocator
     }
+
+    private final RegistryAuthLocator registryAuthLocator = new RegistryAuthLocator()
 
     private DockerClientConfiguration createDockerClientConfig() {
         DockerClientConfiguration dockerClientConfig = new DockerClientConfiguration()
