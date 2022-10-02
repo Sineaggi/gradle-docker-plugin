@@ -214,13 +214,7 @@ class DockerBuildImage extends AbstractDockerRemoteApiTask implements RegistryCr
      * The ID of the image built. The value of this property requires the task action to be executed.
      */
     @Internal
-    final Provider<String> imageId = imageIdFile.map { RegularFile it ->
-        File file = it.asFile
-        if(file.exists()) {
-            return file.text
-        }
-        return null
-    }
+    final Property<String> imageId = project.objects.property(String)
 
     DockerBuildImage() {
         inputDir.set(project.layout.buildDirectory.dir('docker'))
@@ -230,6 +224,15 @@ class DockerBuildImage extends AbstractDockerRemoteApiTask implements RegistryCr
         quiet.set(false)
         pull.set(false)
         cacheFrom.empty()
+
+        imageId.set(imageIdFile.map { RegularFile it ->
+            File file = it.asFile
+            if(file.exists()) {
+                return file.text
+            }
+            return null
+        })
+
         String safeTaskPath = path.replaceFirst("^:", "").replaceAll(":", "_")
         registryCredentials = project.objects.newInstance(DockerRegistryCredentials, project.objects)
         imageIdFile.set(project.layout.buildDirectory.file(".docker/${safeTaskPath}-imageId.txt"))
