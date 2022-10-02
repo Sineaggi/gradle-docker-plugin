@@ -18,6 +18,7 @@ package com.bmuschko.gradle.docker.tasks.image
 import com.bmuschko.gradle.docker.DockerRegistryCredentials
 import com.bmuschko.gradle.docker.internal.OutputCollector
 import com.bmuschko.gradle.docker.tasks.AbstractDockerRemoteApiTask
+import com.bmuschko.gradle.docker.tasks.DockerClientConfiguration
 import com.bmuschko.gradle.docker.tasks.RegistryCredentialsAware
 import com.github.dockerjava.api.command.BuildImageCmd
 import com.github.dockerjava.api.command.BuildImageResultCallback
@@ -27,9 +28,11 @@ import com.github.dockerjava.api.model.BuildResponseItem
 import groovy.transform.CompileStatic
 import org.gradle.api.Action
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
 import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
@@ -211,7 +214,13 @@ class DockerBuildImage extends AbstractDockerRemoteApiTask implements RegistryCr
      * The ID of the image built. The value of this property requires the task action to be executed.
      */
     @Internal
-    final Property<String> imageId = project.objects.property(String)
+    final Provider<String> imageId = imageIdFile.map { RegularFile it ->
+        File file = it.asFile
+        if(file.exists()) {
+            return file.text
+        }
+        return null
+    }
 
     DockerBuildImage() {
         inputDir.set(project.layout.buildDirectory.dir('docker'))
@@ -225,14 +234,26 @@ class DockerBuildImage extends AbstractDockerRemoteApiTask implements RegistryCr
         registryCredentials = project.objects.newInstance(DockerRegistryCredentials, project.objects)
         imageIdFile.set(project.layout.buildDirectory.file(".docker/${safeTaskPath}-imageId.txt"))
 
+        def dockerClientService = this.dockerClientService
+        def imageIdFile = this.imageIdFile
+        def images = this.images
+        def dockerClientConfig = project.provider {
+            DockerClientConfiguration dockerClientConfig = new DockerClientConfiguration()
+            dockerClientConfig.url = url.getOrNull()
+            dockerClientConfig.certPath = certPath.getOrNull()
+            dockerClientConfig.apiVersion = apiVersion.getOrNull()
+            dockerClientConfig
+        }
         outputs.upToDateWhen {
+            DockerClientConfiguration dockerClientConfiguration = dockerClientConfig.get()
+            def dockerClient = dockerClientService.get().getDockerClient(dockerClientConfiguration)
+
             File file = imageIdFile.get().asFile
             if(file.exists()) {
                 try {
                     def fileImageId = file.text
                     def repoTags = dockerClient.inspectImageCmd(fileImageId).exec().repoTags
                     if (!images.present || repoTags.containsAll(images.get())) {
-                        imageId.set(fileImageId)
                         return true
                     }
                 } catch (DockerException ignored) {
@@ -320,7 +341,6 @@ class DockerBuildImage extends AbstractDockerRemoteApiTask implements RegistryCr
         }
 
         String createdImageId = buildImageCmd.exec(createCallback(nextHandler)).awaitImageId()
-        imageId.set(createdImageId)
         imageIdFile.get().asFile.parentFile.mkdirs()
         imageIdFile.get().asFile.text = createdImageId
         logger.quiet "Created image with ID '$createdImageId'."
