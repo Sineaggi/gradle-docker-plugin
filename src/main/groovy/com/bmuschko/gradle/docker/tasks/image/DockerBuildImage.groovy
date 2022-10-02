@@ -234,24 +234,15 @@ class DockerBuildImage extends AbstractDockerRemoteApiTask implements RegistryCr
         registryCredentials = project.objects.newInstance(DockerRegistryCredentials, project.objects)
         imageIdFile.set(project.layout.buildDirectory.file(".docker/${safeTaskPath}-imageId.txt"))
 
-        def dockerClientService = this.dockerClientService
         def imageIdFile = this.imageIdFile
         def images = this.images
-        def dockerClientConfig = project.provider {
-            DockerClientConfiguration dockerClientConfig = new DockerClientConfiguration()
-            dockerClientConfig.url = url.getOrNull()
-            dockerClientConfig.certPath = certPath.getOrNull()
-            dockerClientConfig.apiVersion = apiVersion.getOrNull()
-            dockerClientConfig
-        }
+        def dockerClientProvider = this.dockerClientProvider
         outputs.upToDateWhen {
-            DockerClientConfiguration dockerClientConfiguration = dockerClientConfig.get()
-            def dockerClient = dockerClientService.get().getDockerClient(dockerClientConfiguration)
-
             File file = imageIdFile.get().asFile
             if(file.exists()) {
                 try {
                     def fileImageId = file.text
+                    def dockerClient = dockerClientProvider.get()
                     def repoTags = dockerClient.inspectImageCmd(fileImageId).exec().repoTags
                     if (!images.present || repoTags.containsAll(images.get())) {
                         return true

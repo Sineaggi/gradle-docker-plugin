@@ -22,7 +22,10 @@ import groovy.transform.CompileStatic
 import org.gradle.api.Action
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
+import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.Internal
@@ -120,6 +123,7 @@ abstract class AbstractDockerRemoteApiTask extends DefaultTask {
      * Gets the Docker client uses to communicate with Docker via its remote API.
      * Initialized instance upon first request.
      * Returns the same instance for any successive method call.
+     * To support the configuration cache we rely on DockerClientService's internal cache.
      * <p>
      * Before accessing the Docker client, all data used for configuring its runtime behavior needs to be evaluated.
      * The data includes:
@@ -138,8 +142,16 @@ abstract class AbstractDockerRemoteApiTask extends DefaultTask {
      */
     @Internal
     DockerClient getDockerClient() {
-        DockerClientConfiguration dockerClientConfiguration = createDockerClientConfig()
-        dockerClientService.get().getDockerClient(dockerClientConfiguration)
+        dockerClientProvider.get()
+    }
+
+    private final ProviderFactory providers = project.providers
+
+    @Internal
+    Provider<DockerClient> getDockerClientProvider() {
+        dockerClientService.zip(providers.provider { createDockerClientConfig() }) {dockerClientService, dockerClientConfiguration ->
+            dockerClientService.getDockerClient(dockerClientConfiguration)
+        }
     }
 
     /**
