@@ -31,10 +31,12 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.Nested
 import org.gradle.api.tasks.Optional
+import org.gradle.internal.logging.progress.ProgressLoggerFactory
 
 import java.util.concurrent.TimeUnit
 
 import static com.bmuschko.gradle.docker.internal.IOUtils.getProgressLogger
+import static com.bmuschko.gradle.docker.internal.IOUtils.getProgressLoggerFactory
 
 @CompileStatic
 class DockerExecContainer extends DockerExistingContainer {
@@ -100,6 +102,8 @@ class DockerExecContainer extends DockerExistingContainer {
         doRunRemoteCommand(dockerClient)
     }
 
+    private final ProgressLoggerFactory progressLoggerFactory = getProgressLoggerFactory(project)
+
     protected void doRunRemoteCommand(DockerClient dockerClient) {
         def execCallback = createCallback(nextHandler)
 
@@ -114,7 +118,7 @@ class DockerExecContainer extends DockerExistingContainer {
 
 
             // create progressLogger for pretty printing of terminal log progression.
-            final def progressLogger = getProgressLogger(project, DockerExecContainer)
+            final def progressLogger = getProgressLogger(progressLoggerFactory, DockerExecContainer)
             progressLogger.started()
 
             // if no livenessProbe defined then create a default

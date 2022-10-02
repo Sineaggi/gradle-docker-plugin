@@ -40,9 +40,17 @@ final class IOUtils {
      * @return instance of ProgressLogger.
      */
     static ProgressLogger getProgressLogger(final Project project, final Class clazz) {
-        ServiceRegistry registry = (project.gradle as GradleInternal).getServices()
-        ProgressLoggerFactory factory = registry.get(ProgressLoggerFactory)
+        getProgressLogger(getProgressLoggerFactory(project), clazz)
+    }
+
+    static ProgressLogger getProgressLogger(final ProgressLoggerFactory factory, final Class clazz) {
         ProgressLogger progressLogger = factory.newOperation(Objects.requireNonNull(clazz))
         progressLogger.setDescription("ProgressLogger for ${clazz.getSimpleName()}")
+    }
+
+    static ProgressLoggerFactory getProgressLoggerFactory(final Project project) {
+        ServiceRegistry registry = (project.gradle as GradleInternal).getServices()
+        ProgressLoggerFactory factory = registry.get(ProgressLoggerFactory)
+        return factory
     }
 }
