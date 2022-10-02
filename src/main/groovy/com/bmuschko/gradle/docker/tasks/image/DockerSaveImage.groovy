@@ -2,6 +2,7 @@ package com.bmuschko.gradle.docker.tasks.image
 
 import com.bmuschko.gradle.docker.internal.IOUtils
 import com.bmuschko.gradle.docker.tasks.AbstractDockerRemoteApiTask
+import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.command.SaveImagesCmd
 import com.github.dockerjava.api.command.SaveImagesCmd.TaggedImage
 import com.github.dockerjava.api.exception.DockerException
@@ -56,6 +57,10 @@ class DockerSaveImage extends AbstractDockerRemoteApiTask {
         String safeTaskPath = path.replaceFirst("^:", "").replaceAll(":", "_")
         imageIdsFile.set(project.layout.buildDirectory.file(".docker/${safeTaskPath}-imageIds.properties"))
 
+        def images = this.images
+        def imageIdsFile = this.imageIdsFile
+        def dockerClientProvider = this.dockerClientProvider
+
         onlyIf {
             images.getOrNull()
         }
@@ -75,7 +80,7 @@ class DockerSaveImage extends AbstractDockerRemoteApiTask {
                 try {
                     savedImages.each { savedImage ->
                         def savedId = savedImageIds.getProperty(savedImage)
-                        if (savedId != getImageIds(savedImage)) {
+                        if (savedId != getImageIds(dockerClientProvider.get(), savedImage)) {
                             return false
                         }
                     }
@@ -128,27 +133,28 @@ class DockerSaveImage extends AbstractDockerRemoteApiTask {
 
         def imageIds = new Properties()
         images.each { configuredImage ->
-            imageIds[configuredImage] = getImageIds(configuredImage)
+            imageIds[configuredImage] = getImageIds(dockerClient, configuredImage)
         }
-        imageIdsFile.get().asFile.parentFile.mkdirs()
+        //todo: i don't think mkdirs are necessary for outputfiles
+        //imageIdsFile.get().asFile.parentFile.mkdirs()
         imageIdsFile.get().asFile.withOutputStream {
             imageIds.store(it, null)
         }
     }
 
-    private getImageIds(String image) {
+    private static getImageIds(DockerClient dockerClient, String image) {
         if (image.contains(":")) {
-            getImageIdForConcreteImage(image)
+            return getImageIdForConcreteImage(dockerClient, image)
         } else {
-            getImageIdsForBaseImage(image)
+            return getImageIdsForBaseImage(dockerClient, image)
         }
     }
 
-    private getImageIdForConcreteImage(String image) {
+    private static getImageIdForConcreteImage(DockerClient dockerClient, String image) {
         dockerClient.inspectImageCmd(image).exec().id
     }
 
-    private getImageIdsForBaseImage(String image) {
+    private static getImageIdsForBaseImage(DockerClient dockerClient, String image) {
         dockerClient
             .listImagesCmd()
             .exec()
