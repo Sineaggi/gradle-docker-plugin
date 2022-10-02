@@ -62,7 +62,7 @@ class DockerPullImage extends AbstractDockerRemoteApiTask implements RegistryCre
         AuthConfig authConfig = getRegistryAuthLocator().lookupAuthConfig(image.get(), registryCredentials)
         logger.quiet "Pulling image '${image.get()}' from ${getRegistryAuthLocator().getRegistry(image.get())}."
 
-        PullImageCmd pullImageCmd = dockerClient.pullImageCmd(image.get())
+        PullImageCmd pullImageCmd = dockerClientProvider.zip(image) { dc, im -> dc.pullImageCmd(im) }.get()
 
         if(platform.getOrNull()) {
             pullImageCmd.withPlatform(platform.get())
