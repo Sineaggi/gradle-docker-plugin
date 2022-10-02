@@ -20,12 +20,12 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class DockerClientService implements BuildService<DockerClientService.Params>, AutoCloseable {
     private final Map<DefaultDockerClientConfig, DockerClient> dockerClients;
 
     private final ObjectFactory objects;
-    private final Closer closer;
 
     public interface Params extends BuildServiceParameters {
         Property<String> getUrl();
@@ -36,8 +36,7 @@ public abstract class DockerClientService implements BuildService<DockerClientSe
     @Inject
     public DockerClientService(ObjectFactory objects) {
         this.objects = objects;
-        dockerClients = new HashMap<>();
-        closer = Closer.create();
+        dockerClients = new ConcurrentHashMap<>();
     }
 
     public DockerClient getDockerClient(DockerClientConfiguration dockerClientConfiguration) {
@@ -76,12 +75,10 @@ public abstract class DockerClientService implements BuildService<DockerClientSe
                     .dockerHost(config.getDockerHost())
                     .sslConfig(config.getSSLConfig())
                     .build();
-            DockerClient client = DockerClientImpl.getInstance(
+            return DockerClientImpl.getInstance(
                     config,
                     dockerClient
             );
-            closer.register(client);
-            return client;
         });
     }
 
@@ -104,6 +101,8 @@ public abstract class DockerClientService implements BuildService<DockerClientSe
 
     @Override
     public void close() throws Exception {
-        closer.close();
+        try (final Closer closer = Closer.create()) {
+            dockerClients.values().forEach(closer::register);
+        }
     }
 }
