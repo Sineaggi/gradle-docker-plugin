@@ -27,6 +27,7 @@ import com.github.dockerjava.api.model.AuthConfigurations
 import com.github.dockerjava.api.model.BuildResponseItem
 import groovy.transform.CompileStatic
 import org.gradle.api.Action
+import org.gradle.api.Task
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
@@ -34,6 +35,7 @@ import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.provider.SetProperty
+import org.gradle.api.specs.Spec
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFile
@@ -237,24 +239,24 @@ class DockerBuildImage extends AbstractDockerRemoteApiTask implements RegistryCr
         registryCredentials = project.objects.newInstance(DockerRegistryCredentials, project.objects)
         imageIdFile.set(project.layout.buildDirectory.file(".docker/${safeTaskPath}-imageId.txt"))
 
-        def imageIdFile = this.imageIdFile
-        def images = this.images
-        def dockerClientProvider = this.dockerClientProvider
-        outputs.upToDateWhen {
-            File file = imageIdFile.get().asFile
-            if(file.exists()) {
-                try {
-                    def fileImageId = file.text
-                    def dockerClient = dockerClientProvider.get()
-                    def repoTags = dockerClient.inspectImageCmd(fileImageId).exec().repoTags
-                    if (!images.present || repoTags.containsAll(images.get())) {
-                        return true
+        outputs.upToDateWhen(new Spec<Task>() {
+            @Override
+            boolean isSatisfiedBy(Task element) {
+                File file = imageIdFile.get().asFile
+                if(file.exists()) {
+                    try {
+                        def fileImageId = file.text
+                        def dockerClient = dockerClientProvider.get()
+                        def repoTags = dockerClient.inspectImageCmd(fileImageId).exec().repoTags
+                        if (!images.present || repoTags.containsAll(images.get())) {
+                            return true
+                        }
+                    } catch (DockerException ignored) {
                     }
-                } catch (DockerException ignored) {
                 }
+                return false
             }
-            return false
-        }
+        })
     }
 
     @Override
