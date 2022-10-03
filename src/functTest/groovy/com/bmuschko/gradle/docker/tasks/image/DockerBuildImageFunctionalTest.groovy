@@ -28,20 +28,22 @@ class DockerBuildImageFunctionalTest extends AbstractGroovyDslFunctionalTest {
         """
 
         when:
-        def result = buildAndFail('buildImage')
+        def result = buildAndFail(CONFIGURATION_CACHE, 'buildImage')
 
         then:
         result.output.contains("ADD failed: file not found in build context or excluded by .dockerignore: stat aaa: file does not exist")
+        result.output.contains("0 problems were found storing the configuration cache.")
     }
 
     def "can build image"() {
         buildFile << imageCreationTask()
 
         when:
-        BuildResult result = build('buildImage')
+        BuildResult result = build(CONFIGURATION_CACHE, 'buildImage')
 
         then:
         result.output.contains("Created image with ID")
+        result.output.contains("0 problems were found storing the configuration cache.")
     }
 
     def "can build image using an argument"() {
@@ -74,7 +76,7 @@ USER \$user"""
             class DockerInspectImageUser extends DockerExistingImage {
                 DockerInspectImageUser() {
                     onNext({ image ->
-                        project.logger.quiet "user: \$image.containerConfig.user"
+                        logger.quiet "user: \$image.containerConfig.user"
                     })
                 }
 
@@ -87,11 +89,12 @@ USER \$user"""
         """
 
         when:
-        BuildResult result = build('inspectImage')
+        BuildResult result = build(CONFIGURATION_CACHE, 'inspectImage')
 
         then:
         result.output.contains("Created image with ID")
         result.output.contains("user: what_user")
+        result.output.contains("0 problems were found storing the configuration cache.")
     }
 
     def "can build image for a specific platform"() {
@@ -99,10 +102,11 @@ USER \$user"""
         buildFile << "buildImage.platform = 'linux/s390x'"
 
         when:
-        BuildResult result = build('buildImage')
+        BuildResult result = build(CONFIGURATION_CACHE, 'buildImage')
 
         then:
         result.output.contains("Created image with ID")
+        result.output.contains("0 problems were found storing the configuration cache.")
     }
 
     def "can build image with the specified amount allocated memory"() {
@@ -110,10 +114,11 @@ USER \$user"""
         buildFile << "buildImage.memory = 1073741824L"
 
         when:
-        BuildResult result = build('buildImage')
+        BuildResult result = build(CONFIGURATION_CACHE, 'buildImage')
 
         then:
         result.output.contains("Created image with ID")
+        result.output.contains("0 problems were found storing the configuration cache.")
     }
 
     @IgnoreIf({ os.windows })
@@ -127,10 +132,11 @@ USER \$user"""
         """
 
         when:
-        BuildResult result = build('buildImage')
+        BuildResult result = build(CONFIGURATION_CACHE, 'buildImage')
 
         then:
         result.output.contains("Created image with ID")
+        result.output.contains("0 problems were found storing the configuration cache.")
     }
 
     @Unroll
@@ -138,7 +144,7 @@ USER \$user"""
         buildFile << gradleTaskDefinition
 
         when:
-        BuildResult result = build('inspectImage')
+        BuildResult result = build(CONFIGURATION_CACHE, 'inspectImage')
 
         then:
         result.output.contains("label1:test1, label2:test2")
@@ -189,11 +195,12 @@ USER \$user"""
         buildFile << buildImageWithTagsTask()
 
         when:
-        BuildResult result = build('buildImageWithTags', 'buildImageWithTag')
+        BuildResult result = build(CONFIGURATION_CACHE, 'buildImageWithTags', 'buildImageWithTag')
 
         then:
         result.output.contains("Using images 'test/image:123', 'registry.com:5000/test/image:123'.")
         result.output.contains("Using images 'test/image:123'.")
+        result.output.contains("0 problems were found storing the configuration cache.")
     }
 
 
@@ -201,17 +208,18 @@ USER \$user"""
         buildFile << buildImageWithShmSize()
 
         when:
-        build("buildWithShmSize")
+        BuildResult result = build(CONFIGURATION_CACHE, "buildWithShmSize")
 
         then:
         noExceptionThrown()
+        result.output.contains("0 problems were found storing the configuration cache.")
     }
 
     def "can build image with different targets"() {
         buildFile << buildMultiStageImageTask()
 
         when:
-        BuildResult result = build('buildTarget')
+        BuildResult result = build(CONFIGURATION_CACHE, 'buildTarget')
 
         then:
         // check the output for the built stages
@@ -219,16 +227,18 @@ USER \$user"""
         result.output.contains('Step 4/4 : LABEL maintainer=stage2')
         // stage3 was not called
         ! result.output.contains('stage3')
+        result.output.contains("0 problems were found storing the configuration cache.")
     }
 
     def "can build image using --cache-from with nothing in the cache"() {
         buildFile << buildImageUsingCacheFromWithNothingInCacheTask()
 
         when:
-        BuildResult result = build('buildImageWithCacheFrom')
+        BuildResult result = build(CONFIGURATION_CACHE, 'buildImageWithCacheFrom')
 
         then:
         result.output.contains("Successfully built")
+        result.output.contains("0 problems were found storing the configuration cache.")
     }
 
     @Requires({ TestPrecondition.DOCKER_PRIVATE_REGISTRY_REACHABLE })
@@ -236,10 +246,11 @@ USER \$user"""
         buildFile << buildPushRemovePullBuildImage(false)
 
         when:
-        BuildResult result = build('buildImageWithCacheFrom')
+        BuildResult result = build(CONFIGURATION_CACHE, 'buildImageWithCacheFrom')
 
         then:
         !result.output.contains("Using cache")
+        result.output.contains("0 problems were found storing the configuration cache.")
     }
 
     @Requires({ TestPrecondition.DOCKER_PRIVATE_REGISTRY_REACHABLE })
@@ -247,20 +258,22 @@ USER \$user"""
         buildFile << buildPushRemovePullBuildImage(true)
 
         when:
-        BuildResult result = build('buildImageWithCacheFrom')
+        BuildResult result = build(CONFIGURATION_CACHE, 'buildImageWithCacheFrom')
 
         then:
         result.output.contains("Using cache")
+        result.output.contains("0 problems were found storing the configuration cache.")
     }
 
     def "can build image using --network host"() {
         buildFile << buildImageWithHostNetworkTask()
 
         when:
-        build('buildWithHostNetwork')
+        BuildResult result = build(CONFIGURATION_CACHE, 'buildWithHostNetwork')
 
         then:
         noExceptionThrown()
+        result.output.contains("0 problems were found storing the configuration cache.")
     }
 
     def "task can be up-to-date"() {
@@ -274,22 +287,24 @@ USER \$user"""
         File imageIdFile = new File(projectDir, 'build/.docker/buildImage-imageId.txt')
 
         when:
-        BuildResult result = build('verifyImageId')
+        BuildResult result = build(CONFIGURATION_CACHE, 'verifyImageId')
 
         then:
         result.task(':buildImage').outcome == TaskOutcome.SUCCESS
         result.output.contains("Created image with ID")
         imageIdFile.isFile()
         imageIdFile.text != ""
+        result.output.contains("0 problems were found storing the configuration cache.")
 
         when:
-        result = build('verifyImageId')
+        result = build(CONFIGURATION_CACHE, 'verifyImageId')
 
         then:
         result.task(':buildImage').outcome == TaskOutcome.UP_TO_DATE
         !result.output.contains("Created image with ID")
         imageIdFile.isFile()
         imageIdFile.text != ""
+        result.output.contains("Reusing configuration cache.")
     }
 
     def "task not up-to-date when no imageIdFile"() {
@@ -303,7 +318,7 @@ USER \$user"""
         File imageIdFile = new File(projectDir, 'build/.docker/buildImage-imageId.txt')
 
         when:
-        BuildResult result = build('verifyImageId')
+        BuildResult result = build(CONFIGURATION_CACHE, 'verifyImageId')
 
         then:
         result.task(':buildImage').outcome == TaskOutcome.SUCCESS
@@ -312,7 +327,7 @@ USER \$user"""
         imageIdFile.text != ""
 
         when:
-        result = build('verifyImageId')
+        result = build(CONFIGURATION_CACHE, 'verifyImageId')
 
         then:
         result.task(':buildImage').outcome == TaskOutcome.UP_TO_DATE
@@ -342,7 +357,7 @@ USER \$user"""
         File imageIdFile = new File(projectDir, 'build/.docker/buildImage-imageId.txt')
 
         when:
-        BuildResult result = build('verifyImageId')
+        BuildResult result = build(CONFIGURATION_CACHE, 'verifyImageId')
 
         then:
         result.task(':buildImage').outcome == TaskOutcome.SUCCESS
@@ -351,7 +366,7 @@ USER \$user"""
         imageIdFile.text != ""
 
         when:
-        result = build('verifyImageId')
+        result = build(CONFIGURATION_CACHE, 'verifyImageId')
 
         then:
         result.task(':buildImage').outcome == TaskOutcome.UP_TO_DATE
@@ -361,14 +376,14 @@ USER \$user"""
 
         when:
         buildFile << imageRemovalTask(imageIdFile.text)
-        result = build('removeImage')
+        result = build(CONFIGURATION_CACHE, 'removeImage')
 
         then:
         result.task(':removeImage').outcome == TaskOutcome.SUCCESS
         result.output.contains("Removing image with ID")
 
         when:
-        result = build('verifyImageId')
+        result = build(CONFIGURATION_CACHE, 'verifyImageId')
 
         then:
         result.task(':buildImage').outcome == TaskOutcome.SUCCESS
@@ -389,7 +404,7 @@ USER \$user"""
         File imageIdFile = new File(projectDir, 'build/.docker/buildImage-imageId.txt')
 
         when:
-        BuildResult result = build('verifyImageId')
+        BuildResult result = build(CONFIGURATION_CACHE, 'verifyImageId')
 
         then:
         result.task(':buildImage').outcome == TaskOutcome.SUCCESS
@@ -398,7 +413,7 @@ USER \$user"""
         imageIdFile.text != ""
 
         when:
-        result = build('verifyImageId')
+        result = build(CONFIGURATION_CACHE, 'verifyImageId')
 
         then:
         result.task(':buildImage').outcome == TaskOutcome.UP_TO_DATE
@@ -408,7 +423,7 @@ USER \$user"""
 
         when:
         imageIdFile << " "
-        result = build('verifyImageId')
+        result = build(CONFIGURATION_CACHE ,'verifyImageId')
 
         then:
         result.task(':buildImage').outcome == TaskOutcome.SUCCESS
@@ -457,14 +472,14 @@ USER \$user"""
         """
 
         when:
-        BuildResult result = build('buildImageWithTag')
+        BuildResult result = build(CONFIGURATION_CACHE, 'buildImageWithTag')
 
         then:
         result.task(':buildImageWithTag').outcome == TaskOutcome.SUCCESS
         result.output.contains("Created image with ID")
 
         when:
-        result = build('verifyTagsMissing')
+        result = build(CONFIGURATION_CACHE, 'verifyTagsMissing')
 
         then:
         result.task(':buildImageWithTag').outcome == TaskOutcome.UP_TO_DATE
@@ -474,7 +489,7 @@ USER \$user"""
         !result.output.contains("Created image with ID")
 
         when:
-        result = build('verifyTagsPresent')
+        result = build(CONFIGURATION_CACHE, 'verifyTagsPresent')
 
         then:
         result.task(':buildImageWithTag').outcome == TaskOutcome.SUCCESS
@@ -741,9 +756,9 @@ USER \$user"""
         """
             tasks.withType(DockerBuildImage) { Task task ->
                 def assertTask = tasks.create("assertImageIdFor\${task.name.capitalize()}"){
-                    def dependantTask = task
+                    def imageId = task.getImageId()
                     doLast {
-                        def value = dependantTask.getImageId().getOrNull()
+                        def value = imageId.getOrNull()
                         if(value == null || !(value ==~ /^\\w+\$/)) {
                             throw new GradleException("The imageId property was not set from task \${dependantTask.name}")
                         }

@@ -14,6 +14,8 @@ abstract class AbstractFunctionalTest extends Specification {
     public static final String TEST_IMAGE_WITH_TAG = "${TEST_IMAGE}:${TEST_IMAGE_TAG}"
     public static final String CONFIGURATION_CACHE = '--configuration-cache'
 
+    public static final String CONFIGURATION_CACHE = '--configuration-cache'
+
     @TempDir
     File temporaryFolder
 
