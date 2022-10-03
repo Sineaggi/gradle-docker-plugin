@@ -224,15 +224,6 @@ class DockerBuildImage extends AbstractDockerRemoteApiTask implements RegistryCr
         quiet.set(false)
         pull.set(false)
         cacheFrom.empty()
-
-        imageId.set(imageIdFile.map { RegularFile it ->
-            File file = it.asFile
-            if(file.exists()) {
-                return file.text
-            }
-            return null
-        })
-
         String safeTaskPath = path.replaceFirst("^:", "").replaceAll(":", "_")
         registryCredentials = project.objects.newInstance(DockerRegistryCredentials, project.objects)
         imageIdFile.set(project.layout.buildDirectory.file(".docker/${safeTaskPath}-imageId.txt"))
@@ -240,6 +231,7 @@ class DockerBuildImage extends AbstractDockerRemoteApiTask implements RegistryCr
         def imageIdFile = this.imageIdFile
         def images = this.images
         def dockerClientProvider = this.dockerClientProvider
+        def imageId = this.imageId
         outputs.upToDateWhen {
             File file = imageIdFile.get().asFile
             if(file.exists()) {
@@ -248,6 +240,7 @@ class DockerBuildImage extends AbstractDockerRemoteApiTask implements RegistryCr
                     def dockerClient = dockerClientProvider.get()
                     def repoTags = dockerClient.inspectImageCmd(fileImageId).exec().repoTags
                     if (!images.present || repoTags.containsAll(images.get())) {
+                        imageId.set(fileImageId)
                         return true
                     }
                 } catch (DockerException ignored) {
@@ -335,6 +328,7 @@ class DockerBuildImage extends AbstractDockerRemoteApiTask implements RegistryCr
         }
 
         String createdImageId = buildImageCmd.exec(createCallback(nextHandler)).awaitImageId()
+        imageId.set(createdImageId)
         imageIdFile.get().asFile.parentFile.mkdirs()
         imageIdFile.get().asFile.text = createdImageId
         logger.quiet "Created image with ID '$createdImageId'."
