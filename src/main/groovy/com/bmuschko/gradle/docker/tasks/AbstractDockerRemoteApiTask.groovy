@@ -22,7 +22,6 @@ import groovy.transform.CompileStatic
 import org.gradle.api.Action
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
@@ -142,16 +141,7 @@ abstract class AbstractDockerRemoteApiTask extends DefaultTask {
      */
     @Internal
     DockerClient getDockerClient() {
-        dockerClientProvider.get()
-    }
-
-    private final ProviderFactory providers = project.providers
-
-    @Internal
-    Provider<DockerClient> getDockerClientProvider() {
-        dockerClientService.zip(providers.provider { createDockerClientConfig() }) {dockerClientService, dockerClientConfiguration ->
-            dockerClientService.getDockerClient(dockerClientConfiguration)
-        }
+        dockerClientService.get().getDockerClient(createDockerClientConfig())
     }
 
     /**
