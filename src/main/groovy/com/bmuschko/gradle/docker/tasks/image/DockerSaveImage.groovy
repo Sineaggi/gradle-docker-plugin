@@ -142,8 +142,7 @@ class DockerSaveImage extends AbstractDockerRemoteApiTask {
         images.each { configuredImage ->
             imageIds[configuredImage] = getImageIds(configuredImage)
         }
-        //todo: i don't think mkdirs are necessary for outputfiles
-        //imageIdsFile.get().asFile.parentFile.mkdirs()
+        imageIdsFile.get().asFile.parentFile.mkdirs()
         imageIdsFile.get().asFile.withOutputStream {
             imageIds.store(it, null)
         }
@@ -151,9 +150,9 @@ class DockerSaveImage extends AbstractDockerRemoteApiTask {
 
     private getImageIds(String image) {
         if (image.contains(":")) {
-            return getImageIdForConcreteImage(image)
+            getImageIdForConcreteImage(image)
         } else {
-            return getImageIdsForBaseImage(image)
+            getImageIdsForBaseImage(image)
         }
     }
 
