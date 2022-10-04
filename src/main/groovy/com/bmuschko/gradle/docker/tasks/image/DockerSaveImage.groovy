@@ -58,41 +58,45 @@ class DockerSaveImage extends AbstractDockerRemoteApiTask {
         String safeTaskPath = path.replaceFirst("^:", "").replaceAll(":", "_")
         imageIdsFile.set(project.layout.buildDirectory.file(".docker/${safeTaskPath}-imageIds.properties"))
 
-        onlyIf new Spec<Task>() {
-            @Override
-            boolean isSatisfiedBy(Task element) {
-                images.getOrNull()
-            }
+        onlyIf onlyIfSpec
+
+        outputs.upToDateWhen upToDateWhenSpec
+    }
+
+    private final Spec<Task> onlyIfSpec = new Spec<Task>() {
+        @Override
+        boolean isSatisfiedBy(Task element) {
+            images.getOrNull()
         }
+    }
 
-        outputs.upToDateWhen new Spec<Task>() {
-            @Override
-            boolean isSatisfiedBy(Task element) {
-                File file = imageIdsFile.get().asFile
-                if (file.exists()) {
-                    def savedImageIds = new Properties()
-                    file.withInputStream { savedImageIds.load(it) }
-                    def savedImages = savedImageIds.stringPropertyNames()
+    private final Spec<Task> upToDateWhenSpec = new Spec<Task>() {
+        @Override
+        boolean isSatisfiedBy(Task element) {
+            File file = imageIdsFile.get().asFile
+            if (file.exists()) {
+                def savedImageIds = new Properties()
+                file.withInputStream { savedImageIds.load(it) }
+                def savedImages = savedImageIds.stringPropertyNames()
 
-                    Set<String> configuredImages = images.getOrElse([] as Set)
-                    if (savedImages != configuredImages) {
-                        return false
-                    }
-
-                    try {
-                        savedImages.each { savedImage ->
-                            def savedId = savedImageIds.getProperty(savedImage)
-                            if (savedId != getImageIds(savedImage)) {
-                                return false
-                            }
-                        }
-                        return true
-                    } catch (DockerException e) {
-                        return false
-                    }
+                Set<String> configuredImages = images.getOrElse([] as Set)
+                if (savedImages != configuredImages) {
+                    return false
                 }
-                return false
+
+                try {
+                    savedImages.each { savedImage ->
+                        def savedId = savedImageIds.getProperty(savedImage)
+                        if (savedId != getImageIds(savedImage)) {
+                            return false
+                        }
+                    }
+                    return true
+                } catch (DockerException e) {
+                    return false
+                }
             }
+            return false
         }
     }
 
