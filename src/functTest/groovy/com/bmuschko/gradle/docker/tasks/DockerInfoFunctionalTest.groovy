@@ -77,4 +77,25 @@ class DockerInfoFunctionalTest extends AbstractGroovyDslFunctionalTest {
         result.task(':dockerInfo').outcome == TaskOutcome.FAILED
         result.output.contains('Not a directory')
     }
+
+    def "Can enable configuration cache and retrieve Docker info"() {
+        given:
+        buildFile << """
+            import com.bmuschko.gradle.docker.tasks.DockerInfo
+
+            task dockerInfo(type: DockerInfo)
+        """
+
+        when:
+        BuildResult result = build('--configuration-cache', 'dockerInfo')
+
+        then:
+        result.output.contains('0 problems were found storing the configuration cache.')
+
+        when:
+        result = build('--configuration-cache', 'dockerInfo')
+
+        then:
+        result.output.contains('Configuration cache entry reused.')
+    }
 }
