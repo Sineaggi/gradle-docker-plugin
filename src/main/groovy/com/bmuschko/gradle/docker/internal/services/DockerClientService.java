@@ -47,14 +47,14 @@ public abstract class DockerClientService implements BuildService<DockerClientSe
         dockerClientConfigBuilder.withDockerHost(dockerUrl);
 
         if (dockerCertPath != null) {
-            String caninicalCertPath;
+            String canonicalPathCertPath;
             try {
-                caninicalCertPath = dockerCertPath.getCanonicalPath();
+                canonicalPathCertPath = dockerCertPath.getCanonicalPath();
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
             dockerClientConfigBuilder.withDockerTlsVerify(true);
-            dockerClientConfigBuilder.withDockerCertPath(caninicalCertPath);
+            dockerClientConfigBuilder.withDockerCertPath(canonicalPathCertPath);
         } else {
             dockerClientConfigBuilder.withDockerTlsVerify(false);
         }

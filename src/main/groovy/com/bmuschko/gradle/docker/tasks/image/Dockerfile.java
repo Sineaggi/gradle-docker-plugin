@@ -15,6 +15,7 @@
  */
 package com.bmuschko.gradle.docker.tasks.image;
 
+import groovy.transform.PackageScope;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Transformer;
 import org.gradle.api.file.Directory;
@@ -126,16 +127,12 @@ public class Dockerfile extends DefaultTask {
     }
 
     private void verifyValidInstructions() {
-        List<Instruction> allInstructions = new ArrayList(instructions.get());
+        List<Instruction> allInstructions = new ArrayList<>(instructions.get());
 
         // Comments are not relevant for validating instruction order
         allInstructions.removeIf(it -> {
             String text = it.getText();
-            if (text == null) {
-                return false;
-            } else {
-                return text.startsWith(CommentInstruction.KEYWORD);
-            }
+            return text != null && text.startsWith(CommentInstruction.KEYWORD);
         });
 
         if (allInstructions.isEmpty()) {
@@ -1256,12 +1253,14 @@ public class Dockerfile extends DefaultTask {
     }
 
     private static class ItemJoinerUtil {
-        private static boolean isUnquotedStringWithWhitespaces(String str) {
-            return !str.matches("[\"].*[\"]") &&
-                str.matches(".*(?: |(?:\r?\n)).*");
+        @PackageScope
+        static boolean isUnquotedStringWithWhitespaces(String str) {
+            return !str.matches("\".*\"") &&
+                str.matches(".*(?: |\r?\n).*");
         }
 
-        private static String toQuotedString(final String str) {
+        @PackageScope
+        static String toQuotedString(final String str) {
             return "\"".concat(str.replaceAll("\"", "\\\\\"")).concat("\"");
         }
     }
