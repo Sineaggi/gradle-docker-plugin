@@ -26,6 +26,7 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
+import org.gradle.util.GradleVersion;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -121,7 +122,9 @@ public class DockerLogsContainer extends DockerExistingContainer {
 
     public Writer setSink(Writer sink) {
         if (sink != null) {
-            notCompatibleWithConfigurationCache("Setting sink is not compatible with configuration cache");
+            if (GradleVersion.current().compareTo(GradleVersion.version("7.4")) >= 0) {
+                notCompatibleWithConfigurationCache("Setting sink is not compatible with configuration cache");
+            }
             return this.sink = sink;
         } else {
             isCompatibleWithConfigurationCache();
