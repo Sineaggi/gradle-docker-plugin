@@ -33,7 +33,7 @@ abstract class AbstractFunctionalTest extends Specification {
             envVars.put("PATH", System.getenv("PATH"))
         }
 
-        if (GradleVersion.version("7.0") >= GradleVersion.version(System.getenv("GRADLE_VERSION") ?: System.getenv("CURRENT_GRADLE_VERSION"))) {
+        if (GradleVersion.version(System.getenv("GRADLE_VERSION") ?: System.getenv("CURRENT_GRADLE_VERSION")) >= GradleVersion.version("7.0")) {
             configurationCacheStorageSuccess = "0 problems were found storing the configuration cache."
         } else {
             configurationCacheStorageSuccess = "Configuration cache entry stored."
